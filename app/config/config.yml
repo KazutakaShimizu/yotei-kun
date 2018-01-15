@@ -57,6 +57,21 @@ doctrine:
         naming_strategy: doctrine.orm.naming_strategy.underscore
         auto_mapping: true
 
+# Doctrine migrations Configuresiton
+doctrine_migrations:
+    dir_name: "%kernel.root_dir%/DoctrineMigrations"
+    namespace: Application\Migrations
+    table_name: migration_versions
+    name: Application Migrations
+
+stof_doctrine_extensions:
+    default_locale: UTC
+    orm:
+        default:
+            timestampable: true
+            softdeleteable: true
+            sortable: true
+
 # Swiftmailer Configuration
 swiftmailer:
     transport: '%mailer_transport%'
