@@ -190,7 +190,7 @@ class ScheduleSetting
      */
     public function getTimeTo()
     {
-        return $this->dayTo;
+        return $this->timeTo;
     }
 
 

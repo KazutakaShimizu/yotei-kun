@@ -148,24 +148,34 @@ class DefaultController extends Controller
 
 
         $freeTimes = [];
-        dump($scheduleSettingEntity->getTimeFrom());
-        $boforeBusyEndTime = $scheduleSettingEntity->getTimeFrom()->format('H時');
+        $boforeBusyEndTime = $scheduleSettingEntity->getTimeFrom()->format('H');
+        $timeFrom = $scheduleSettingEntity->getTimeFrom()->format('H');
+        $timeTo = $scheduleSettingEntity->getTimeTo()->format('H');
+
         foreach ($results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy() as $busy) {
-            $startYear = date("Y年", strtotime($busy->getStart()));
-            $startMonth = date("m月", strtotime($busy->getStart()));
-            $startDay = date("d日", strtotime($busy->getStart()));
-            $startTime = date("H時", strtotime($busy->getStart()));
-            $endYear = date("Y年", strtotime($busy->getEnd()));
-            $endMonth = date("m月", strtotime($busy->getEnd()));
-            $endDay = date("d日", strtotime($busy->getEnd()));
-            $endTime = date("H時", strtotime($busy->getEnd()));
+            $startYear = date("Y", strtotime($busy->getStart()));
+            $startMonth = date("m", strtotime($busy->getStart()));
+            $startDay = date("d", strtotime($busy->getStart()));
+            $startTime = date("H", strtotime($busy->getStart()));
+            $endYear = date("Y", strtotime($busy->getEnd()));
+            $endMonth = date("m", strtotime($busy->getEnd()));
+            $endDay = date("d", strtotime($busy->getEnd()));
+            $endTime = date("H", strtotime($busy->getEnd()));
             if (!isset($freeTimes["{$startYear}{$startMonth}{$startDay}"])) {
-                $boforeBusyEndTime =$scheduleSettingEntity->getTimeFrom()->format('H時');
-                $freeTimes["{$startYear}{$startMonth}{$startDay}"][] = "{$boforeBusyEndTime}~{$startTime}";
-            }else{
-                $freeTimes["{$startYear}{$startMonth}{$startDay}"][] = "{$boforeBusyEndTime}~{$startTime}";
+                $boforeBusyEndTime =$scheduleSettingEntity->getTimeFrom()->format('H');
             }
-            $boforeBusyEndTime = $endTime;
+            // 開始時間、終了時間周りの設定
+            if ($timeFrom < $endTime) {
+                if ($startTime > $timeTo) {
+                    $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "{$beforeBusyEndTime}時~{$timeTo}時";
+                }else{
+                    $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "{$beforeBusyEndTime}時~{$startTime}時";
+                }
+                $beforeBusyEndTime = $endTime;
+            }elseif($timeFrom >= $startTime && $timeFrom <= $endTime){
+                $beforeBusyEndTime = $endTime;                
+            }
+            $beforeBusyYearMonthDate = "{$startYear}年{$startMonth}月{$startDay}日";
         }
 
         foreach ($freeTimes as $day => $times) {
