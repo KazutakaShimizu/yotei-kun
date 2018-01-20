@@ -3,7 +3,6 @@
 // next todo
 // 処理の見直し
 // minimumUnitを考慮する
-// 　→datetimeで考える必要があるかも
 //　前の予定から◯○分あけるとか。一時間あけて予定を出すなら、最低二時間でとっておいて、後半の一時間を出力するとか
 
 
@@ -26,9 +25,6 @@ class DefaultController extends Controller
     {
         $scheduleSettingEntity = new ScheduleSetting();
         $form = $this->createScheduleSettingForm($scheduleSettingEntity);
-
-        
-
         return $this->render('default/index.html.twig', array(
             "form" => $form->createView(),
         ));
@@ -149,66 +145,93 @@ class DefaultController extends Controller
         } 
 
         $freebusy = new \Google_Service_Calendar_FreeBusyRequest();
-        $freebusy->setTimeMin(date("c", strtotime("2018-01-22")));
-        $freebusy->setTimeMax(date("c", strtotime("2018-02-23")));
+        $freebusy->setTimeMin(date("c", strtotime("2018-01-06")));
+        $freebusy->setTimeMax(date("c", strtotime("2018-01-07")));
         $freebusy->setTimeZone('Asia/Tokyo');
         $freebusy->setItems($calendarArray);
         $results = $calendarService->freebusy->query($freebusy);
 
         $freeTimes = [];
         // 前の予定の終わった時間
-        $beforeBusyEndTime = $scheduleSettingEntity->getTimeFrom()->format('H00');
-        // 空き時間を出力する範囲の開始
-        $timeFrom = $scheduleSettingEntity->getTimeFrom()->format('H00');
-        // 空き時間を出力する範囲の終了
-        $timeTo = $scheduleSettingEntity->getTimeTo()->format('H00');
-        foreach ($results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy() as $busy) {
+        $beforeBusyEndTime;
+        $i = 0;
+        $busyArray = $results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy();
+        foreach ($busyArray as $busy) {
             // 予定の開始関連
-            $startYear = date("Y", strtotime($busy->getStart()));
-            $startMonth = date("m", strtotime($busy->getStart()));
-            $startDay = date("d", strtotime($busy->getStart()));
-            $startTime = date("Hi", strtotime($busy->getStart()));
-
+            // $startDateTime = $busy->getStart();
+            $startDateTime = new \DateTime($busy->getStart());
+            $startYear = $startDateTime->format("Y");
+            $startMonth = $startDateTime->format("m");
+            $startDay = $startDateTime->format("d");
+            $startTime = $startDateTime->format("Hi");
             // 予定の終了関連
-            $endYear = date("Y", strtotime($busy->getEnd()));
-            $endMonth = date("m", strtotime($busy->getEnd()));
-            $endDay = date("d", strtotime($busy->getEnd()));
-            $endTime = date("Hi", strtotime($busy->getEnd()));
+            $endDateTime = new \DateTime($busy->getEnd());
 
+            // ここでtimeFromをそのbusyの日付に直すべき
+            $timeFrom = $scheduleSettingEntity->getTimeFrom()->setDate($startYear, $startMonth, $startDay);
+            $timeTo = $scheduleSettingEntity->getTimeTo()->setDate($startYear, $startMonth, $startDay);
+
+            dump($busy);
             // その日最初の予定の場合は、beforeBusyEndTimeをリセットする
-            if (!array_key_exists("{$startYear}年{$startMonth}月{$startDay}日", $freeTimes)){
-                $beforeBusyEndTime =$scheduleSettingEntity->getTimeFrom()->format('Hi');
+            if (!array_key_exists($startDateTime->format("Y年m月d日"), $freeTimes)){
+                $beforeBusyEndTime = $timeFrom;
             }
-            
-            if ($timeFrom > $endTime) {// 範囲の開始時間の方が、予定の終わり時間よりもおそい場合
-                if ($startTime > $timeTo) {// 予定の開始時間の方が、範囲の開始時間よりも遅い
-                    $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "{$beforeBusyEndTime}~{$timeTo}";
+
+            dump($beforeBusyEndTime);
+            if ($timeFrom > $endDateTime) {// 範囲の開始時間の方が、予定の終わり時間よりもおそい場合
+                if ($startDateTime > $timeTo) {// 予定の開始時間の方が、範囲の開始時間よりも遅い
+                    dump(0);
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
                 }else{// 予定の開始時間の方が、範囲の開始時間よりも早い
-                    $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "skip";
+                    dump(1);
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "skip";
+
+                    // endTimeの方がtimeFromよりも前の場合はtimeFromをbbeに入れたい
+                    if ($endDateTime < $timeFrom) {
+                        $beforeBusyEndTime = $timeFrom;
+                    }else{
+                        $beforeBusyEndTime = $endDateTime;
+                    }
                 }
-                $beforeBusyEndTime = $endTime;
-            }elseif($timeFrom >= $startTime && $timeFrom <= $endTime){// 範囲の開始時間の方が、予定の開始時間よりもおそく、予定の終わり時間よりも早い
-                $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "skip";
-                $beforeBusyEndTime = $endTime;
+            }elseif($timeFrom >= $startDateTime && $timeFrom <= $endDateTime){// 範囲の開始時間の方が、予定の開始時間よりもおそく、予定の終わり時間よりも早い
+                    dump(2);
+                $freeTimes[$startDateTime->format("Y年m月d日")][] = "skip";
+                $beforeBusyEndTime = $endDateTime;
             }else{// 開始時間の方が、予定の終わり時間よりもおそい場合
-                $freeTimes["{$startYear}年{$startMonth}月{$startDay}日"][] = "{$beforeBusyEndTime}~{$startTime}";
-                $beforeBusyEndTime = $endTime;
+                if ($timeFrom < $beforeBusyEndTime) {
+                    dump(3);
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$startDateTime->format("H:i")}";
+                }else{
+                    dump(4);
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$startDateTime->format("H:i")}";
+                }
+                $beforeBusyEndTime = $endDateTime;
             }
-            $beforeBusyYearMonthDate = "{$startYear}年{$startMonth}月{$startDay}日";
+            $beforeBusyYearMonthDate = $startDateTime->format("Y年m月d日");
+            if (array_key_exists($i+1, $busyArray)) {
+                if ($busy !== $busyArray[$i+1]) {
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+                }
+            }else{
+                $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+            }
+            $i++;
         }
+        dump($freeTimes);
 
         $freeTimesText = [];
         foreach ($freeTimes as $day => $times) {
             $str = "{$day}:";
             foreach ($times as $time) {
                 if ($time !== "skip") {
-                    $time = substr_replace($time, ':', 2, 0);
-                    $time = substr_replace($time, ':', 8, 0);
                     $str .= "{$time}, ";
                 }
             }
             $freeTimesText[] = rtrim($str, ", ");
         }
+        dump($freeTimesText);
+        exit;
+
 
         // replace this example code with whatever you need
         return $this->render('default/answer.html.twig', array(
