@@ -145,17 +145,18 @@ class DefaultController extends Controller
         } 
 
         $freebusy = new \Google_Service_Calendar_FreeBusyRequest();
-        $freebusy->setTimeMin(date("c", strtotime("2018-01-06")));
-        $freebusy->setTimeMax(date("c", strtotime("2018-01-07")));
+        // $freebusy->setTimeMin(date("c", strtotime("2018-01-21")));
+        $freebusy->setTimeMin(date("c", strtotime("2018-01-01")));
+        $freebusy->setTimeMax(date("c", strtotime("2018-01-30")));
         $freebusy->setTimeZone('Asia/Tokyo');
         $freebusy->setItems($calendarArray);
         $results = $calendarService->freebusy->query($freebusy);
 
         $freeTimes = [];
-        // 前の予定の終わった時間
         $beforeBusyEndTime;
         $i = 0;
         $busyArray = $results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy();
+        $isTodayFirstBusy = true;
         foreach ($busyArray as $busy) {
             // 予定の開始関連
             // $startDateTime = $busy->getStart();
@@ -163,7 +164,6 @@ class DefaultController extends Controller
             $startYear = $startDateTime->format("Y");
             $startMonth = $startDateTime->format("m");
             $startDay = $startDateTime->format("d");
-            $startTime = $startDateTime->format("Hi");
             // 予定の終了関連
             $endDateTime = new \DateTime($busy->getEnd());
 
@@ -171,51 +171,54 @@ class DefaultController extends Controller
             $timeFrom = $scheduleSettingEntity->getTimeFrom()->setDate($startYear, $startMonth, $startDay);
             $timeTo = $scheduleSettingEntity->getTimeTo()->setDate($startYear, $startMonth, $startDay);
 
-            dump($busy);
-            // その日最初の予定の場合は、beforeBusyEndTimeをリセットする
-            if (!array_key_exists($startDateTime->format("Y年m月d日"), $freeTimes)){
-                $beforeBusyEndTime = $timeFrom;
-            }
-
-            dump($beforeBusyEndTime);
-            if ($timeFrom > $endDateTime) {// 範囲の開始時間の方が、予定の終わり時間よりもおそい場合
-                if ($startDateTime > $timeTo) {// 予定の開始時間の方が、範囲の開始時間よりも遅い
-                    dump(0);
-                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
-                }else{// 予定の開始時間の方が、範囲の開始時間よりも早い
-                    dump(1);
-                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "skip";
-
-                    // endTimeの方がtimeFromよりも前の場合はtimeFromをbbeに入れたい
-                    if ($endDateTime < $timeFrom) {
-                        $beforeBusyEndTime = $timeFrom;
+            if ($timeFrom < $startDateTime) {
+                if($isTodayFirstBusy){// その日最初の予定だった場合
+                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$startDateTime->format("H:i")}";
+                }else{
+                    // その予定のstartTimeがtimeToよりも後ならtimeToを使うべき
+                    if ($startDateTime > $timeTo) {
+                        $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
                     }else{
-                        $beforeBusyEndTime = $endDateTime;
+                        $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$startDateTime->format("H:i")}";
                     }
                 }
-            }elseif($timeFrom >= $startDateTime && $timeFrom <= $endDateTime){// 範囲の開始時間の方が、予定の開始時間よりもおそく、予定の終わり時間よりも早い
-                    dump(2);
-                $freeTimes[$startDateTime->format("Y年m月d日")][] = "skip";
                 $beforeBusyEndTime = $endDateTime;
-            }else{// 開始時間の方が、予定の終わり時間よりもおそい場合
-                if ($timeFrom < $beforeBusyEndTime) {
-                    dump(3);
-                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$startDateTime->format("H:i")}";
-                }else{
-                    dump(4);
-                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$startDateTime->format("H:i")}";
-                }
+            }elseif($timeFrom > $endDateTime){
+                $beforeBusyEndTime = $timeFrom;
+            }else{
                 $beforeBusyEndTime = $endDateTime;
             }
-            $beforeBusyYearMonthDate = $startDateTime->format("Y年m月d日");
+
             if (array_key_exists($i+1, $busyArray)) {
-                if ($busy !== $busyArray[$i+1]) {
-                    $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+                $nextBusyStartDateTime = new \DateTime($busyArray[$i+1]->getStart());
+                if ($startDateTime->format("Ymd") !== $nextBusyStartDateTime->format("Ymd")) {//その日最後の予定だった場合
+                    // 予定のスタート時間 < 範囲の終わり時間かつ予定の終わり
+                    if ($endDateTime < $timeTo) {
+                        if ($isTodayFirstBusy) {
+                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
+                        }else{
+                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+                        }
+                    }
+                    $i++;
+                    $isTodayFirstBusy = true;
+                    continue;
                 }
             }else{
-                $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+                if ($endDateTime < $timeTo) {
+                    // ここでもbeforebusyEndtimeを使う必要のあるパターン
+                    if ($isTodayFirstBusy) {
+                        $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
+                    }else{
+                        $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
+                    }
+                }
             }
+            // 予定が何もない日があったらここで入れる
+            // 前の日のbusyを入れておく変数を作って、その差が１日以上ならここで必要なだけarrayを作る
+
             $i++;
+            $isTodayFirstBusy = false;
         }
         dump($freeTimes);
 
@@ -223,9 +226,7 @@ class DefaultController extends Controller
         foreach ($freeTimes as $day => $times) {
             $str = "{$day}:";
             foreach ($times as $time) {
-                if ($time !== "skip") {
-                    $str .= "{$time}, ";
-                }
+                $str .= "{$time}, ";
             }
             $freeTimesText[] = rtrim($str, ", ");
         }
