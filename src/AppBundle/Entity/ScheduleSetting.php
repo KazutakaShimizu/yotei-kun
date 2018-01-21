@@ -61,6 +61,13 @@ class ScheduleSetting
     private $minimumUnit;
 
     /**
+     * @var string
+     *
+     * @ORM\Column(name="interval", type="integer", nullable=false)
+     */
+    private $interval;
+
+    /**
      * @var \DateTime
      * @Gedmo\Timestampable(on="create")
      * @ORM\Column(name="created_at", type="datetime", nullable=false)
@@ -216,6 +223,30 @@ class ScheduleSetting
     public function getMinimumUnit()
     {
         return $this->minimumUnit;
+    }
+
+    /**
+     * Set interval
+     *
+     * @param \DateTime $interval
+     *
+     * @return UserPlan
+     */
+    public function setInterval($interval)
+    {
+        $this->interval = $interval;
+
+        return $this;
+    }
+
+    /**
+     * Get interval
+     *
+     * @return \DateTime
+     */
+    public function getInterval()
+    {
+        return $this->interval;
     }
 
     /**

@@ -48,6 +48,15 @@ class ScheduleSettingType extends AbstractType
                     "step" => 15,
                 ),            
             ))
+            ->add('interval', "integer", array(
+                'label' => '前後何分あけるか',
+                'required'  => false,
+                "attr" => array(
+                    'min'  => 0,
+                    'max'  => 180,
+                    "step" => 15,
+                ),            
+            ))
         ;
     }
 
