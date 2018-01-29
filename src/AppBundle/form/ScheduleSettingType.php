@@ -3,6 +3,8 @@
 namespace AppBundle\Form;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolverInterface;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
@@ -23,19 +25,21 @@ class ScheduleSettingType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
-            ->add('dayFrom', DateType::class, array(
+            ->add('dayFrom', TextType::class, array(
                 'label' => '開始日',
                 'required'  => false,
             ))
-            ->add('dayTo', DateType::class, array(
+            ->add('dayTo', TextType::class, array(
                 'label' => '終了日',
                 'required'  => false,
             ))
             ->add('timeFrom', TimeType::class, array(
+                'widget' => 'single_text',
                 'label' => '開始時間',
                 'required'  => false,
             ))
             ->add('timeTo', TimeType::class, array(
+                'widget' => 'single_text',
                 'label' => '終了時間',
                 'required'  => false,
             ))
@@ -57,9 +61,20 @@ class ScheduleSettingType extends AbstractType
                     "step" => 15,
                 ),            
             ))
+            ->addEventListener(
+                FormEvents::PRE_SUBMIT,
+                array($this, 'onPreSetData')
+            );
         ;
     }
 
+    public function onPreSetData(FormEvent $event){
+        $postData = $event->getData();
+        $postData["dayFrom"] = new \DateTime($postData["dayFrom"]);
+        $tmp = new \DateTime($postData["dayTo"]);
+        $postData["dayTo"] = $tmp->setTime(23, 59, 59);
+        $event->setData($postData);
+    }
     /**
      * @param OptionsResolverInterface $resolver
      */

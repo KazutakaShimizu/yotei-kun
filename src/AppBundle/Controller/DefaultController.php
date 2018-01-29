@@ -1,6 +1,7 @@
 <?php
 
-//　前の予定から◯○分あけるとか。一時間あけて予定を出すなら、最低二時間でとっておいて、後半の一時間を出力するとか
+// 予定が全く入ってない日の対応
+// 予定が全く入ってない日、もしくは入ってるが範囲に入ってない日の際に、どうやってintervalを反映させないようにするか
 
 
 namespace AppBundle\Controller;
@@ -15,6 +16,8 @@ use AppBundle\Form\ScheduleSettingType;
 
 class DefaultController extends Controller
 {
+    public $freeTimes;
+
     /**
      * @Route("/", name="yotei-kun")
      */
@@ -49,8 +52,9 @@ class DefaultController extends Controller
         $form = $this->createScheduleSettingForm($scheduleSettingEntity);
         $form->handleRequest($request);
         if (!$form->isValid()) {
-            var_dump($form->getErrors(true));
-            dump($hogehoge);
+            dump($form->getErrors(true));
+            exit;
+            return $this->redirect($this->generateUrl('yotei-kun'));
         }
 
         $client = $this->getClient();
@@ -79,13 +83,21 @@ class DefaultController extends Controller
         $freebusy->setItems($calendarArray);
         $results = $calendarService->freebusy->query($freebusy);
 
-        $freeTimes = [];
+        // $freeTimes = [];
         $beforeBusyEndTime;
         $i = 0;
         $busyArray = $results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy();
         $isTodayFirstBusy = true;
         $minimumUnit = $scheduleSettingEntity->getMinimumUnit();
         $interval = $scheduleSettingEntity->getInterval();
+        dump($scheduleSettingEntity->getTimeFrom());
+        exit;
+        
+        $dateInterval = new \DateInterval('P1D');
+        $daterange = new \DatePeriod($scheduleSettingEntity->getDayFrom(), $dateInterval ,$scheduleSettingEntity->getDayTo());
+        foreach ($daterange as $date) {
+            $this->freeTimes[$date->format("Y年m月d日")] = null;
+        }
 
         foreach ($busyArray as $busy) {
             // 予定の開始関連
@@ -96,25 +108,21 @@ class DefaultController extends Controller
             // 予定の終了関連
             $endDateTime = new \DateTime($busy->getEnd());
 
-            // ここでtimeFromをそのbusyの日付に直すべき
             $timeFrom = $scheduleSettingEntity->getTimeFrom()->setDate($startYear, $startMonth, $startDay);
             $timeTo = $scheduleSettingEntity->getTimeTo()->setDate($startYear, $startMonth, $startDay);
 
             if ($timeFrom < $startDateTime) {
                 if($isTodayFirstBusy){// その日最初の予定だった場合
-                    if ($this->isEnoughFreeTime($timeFrom, $startDateTime, $minimumUnit, $interval)) {
-                        $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$startDateTime->format("H:i")}";
-                    }
+                    dump(0);
+                    $this->addFreeTime($startDateTime, $timeFrom, $startDateTime, $minimumUnit, $interval, 1);
                 }else{
                     // その予定のstartTimeがtimeToよりも後ならtimeToを使うべき
                     if ($startDateTime > $timeTo) {
-                        if ($this->isEnoughFreeTime($beforeBusyEndTime, $timeTo, $minimumUnit, $interval)) {
-                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
-                        }
+                        dump(1);
+                        $this->addFreeTime($startDateTime, $beforeBusyEndTime, $timeTo, $minimumUnit, $interval);
                     }else{
-                        if ($this->isEnoughFreeTime($beforeBusyEndTime, $startDateTime, $minimumUnit, $interval)) {
-                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$startDateTime->format("H:i")}";
-                        }
+                        dump(2);
+                        $this->addFreeTime($startDateTime, $beforeBusyEndTime, $startDateTime, $minimumUnit, $interval);
                     }
                 }
                 $beforeBusyEndTime = $endDateTime;
@@ -130,14 +138,11 @@ class DefaultController extends Controller
                     // 予定のスタート時間 < 範囲の終わり時間かつ予定の終わり
                     if ($endDateTime < $timeTo) {
                         if ($isTodayFirstBusy) {
-                            if ($this->isEnoughFreeTime($beforeBusyEndTime, $timeTo, $minimumUnit, $interval)) {
-                                $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
-                            }
+                            dump(3);
+                            $this->addFreeTime($startDateTime, $beforeBusyEndTime, $timeTo, $minimumUnit, $interval, 2);
                         }else{
-                            if ($this->isEnoughFreeTime($endDateTime, $timeTo, $minimumUnit, $interval)) {
-                                $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
-                            }
-
+                            dump(4);
+                            $this->addFreeTime($startDateTime, $endDateTime, $timeTo, $minimumUnit, $interval, 2);
                         }
                     }
                     $i++;
@@ -148,13 +153,11 @@ class DefaultController extends Controller
                 if ($endDateTime < $timeTo) {
                     // ここでもbeforebusyEndtimeを使う必要のあるパターン
                     if ($isTodayFirstBusy) {
-                        if ($this->isEnoughFreeTime($beforeBusyEndTime, $timeTo, $minimumUnit, $interval)) {
-                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$beforeBusyEndTime->format("H:i")}~{$timeTo->format("H:i")}";
-                        }
+                        dump(5);
+                        $this->addFreeTime($startDateTime, $beforeBusyEndTime, $timeTo, $minimumUnit, $interval, 2);
                     }else{
-                        if ($this->isEnoughFreeTime($endDateTime, $timeTo, $minimumUnit, $interval)) {
-                            $freeTimes[$startDateTime->format("Y年m月d日")][] = "{$endDateTime->format("H:i")}~{$timeTo->format("H:i")}";
-                        }
+                        dump(6);
+                        $this->addFreeTime($startDateTime, $endDateTime, $timeTo, $minimumUnit, $interval, 2);
                     }
                 }
             }
@@ -162,19 +165,22 @@ class DefaultController extends Controller
             $isTodayFirstBusy = false;
         }
 
-        $interval = new \DateInterval('P1D');
-        $daterange = new \DatePeriod($scheduleSettingEntity->getDayFrom(), $interval ,$scheduleSettingEntity->getDayTo());
-        foreach ($daterange as $date) {
-            if (!array_key_exists($date->format("Y年m月d日"), $freeTimes)) {
-                $freeTimes[$date->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}";
-            }
-        }
-        ksort($freeTimes);
+        // busyArrayとdateRangeを比較して日付が入ってなければみたいな？
+
+
+        // $interval = new \DateInterval('P1D');
+        // $daterange = new \DatePeriod($scheduleSettingEntity->getDayFrom(), $interval ,$scheduleSettingEntity->getDayTo());
+        // foreach ($daterange as $date) {
+        //     if (!array_key_exists($date->format("Y年m月d日"), $this->freeTimes)) {
+        //         $freeTimes[$date->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}";
+        //     }
+        // }
+        ksort($this->freeTimes);
 
         $freeTimesText = [];
-        foreach ($freeTimes as $day => $times) {
+        foreach ($this->freeTimes as $day => $times) {
             $str = "{$day}:";
-            foreach ($times as $time) {
+            foreach ((array)$times as $time) {
                 $str .= "{$time}, ";
             }
             $freeTimesText[] = rtrim($str, ", ");
@@ -187,20 +193,19 @@ class DefaultController extends Controller
         ));
     }
 
-    private function addFreeTime($thisDay, $timeFrom, $timeTo, $minimumUnit, $interval){
-        $diff = $timeFrom->diff($timeTo)->format("%h")*60 + $timeFrom->diff($timeTo)->format("%i") + $interval*2;
-        if ($diff >= $minimumUnit) {
-            $timeFrom->modify("{$interval} minutes");
-            $timeTo->modify("-{$interval} minutes");
-            $freeTimes[$thisDay][] = "{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}";
+    private function addFreeTime($thisDay, $timeFrom, $timeTo, $minimumUnit, $interval, $type=0){
+        $freeTime = $timeFrom->diff($timeTo)->format("%h")*60 + $timeFrom->diff($timeTo)->format("%i");
+        $minimumUnit += $interval*2;
+        if ($freeTime >= $minimumUnit) {
+            if ($type == 0 || $type == 2) {
+                $timeFrom->modify("{$interval} minutes");
+            }
+            if ($type == 0 || $type == 1) {
+                $timeTo->modify("-{$interval} minutes");
+            }
+            $this->freeTimes[$thisDay->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}";
         }
     }
-
-    private function isEnoughFreeTime($timeFrom, $timeTo, $minimumUnit, $interval){
-        $diff = $timeFrom->diff($timeTo)->format("%h")*60 + $timeFrom->diff($timeTo)->format("%i") + $interval*2;
-        return $diff >= $minimumUnit ? true : false;
-    }
-
 
     private function getClient(){
         $client = new \Google_Client();
