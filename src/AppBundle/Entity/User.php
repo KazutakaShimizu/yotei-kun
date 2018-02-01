@@ -26,6 +26,12 @@ class User
     private $id;
 
     /**
+     * @var string
+     * @ORM\Column(name="token_name", type="text", length=65535, nullable=false)
+     */
+    private $tokenName;
+
+    /**
      * @var \DateTime
      * @Gedmo\Timestampable(on="create")
      * @ORM\Column(name="created_at", type="datetime", nullable=false)
@@ -61,6 +67,30 @@ class User
     public function getId()
     {
         return $this->id;
+    }
+
+    /**
+     * Set tokenName
+     *
+     * @param \DateTime $tokenName
+     *
+     * @return UserPlan
+     */
+    public function setTokenName($tokenName)
+    {
+        $this->tokenName = $tokenName;
+
+        return $this;
+    }
+
+    /**
+     * Get tokenName
+     *
+     * @return \DateTime
+     */
+    public function getTokenName()
+    {
+        return $this->tokenName;
     }
 
     /**

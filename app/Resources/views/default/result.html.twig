@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+{% block stylesheets %}
+<link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1/themes/redmond/jquery-ui.css" >
+<link rel="stylesheet" href="{{ asset('javascript/jquery-timepicker/jquery.timepicker.css') }}">
+<link rel="stylesheet" href="{{ asset('css/main.css') }}">
+{% endblock %}
+{% block javascripts %}
+<script src="//ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1/i18n/jquery.ui.datepicker-ja.min.js"></script>
+<script src="{{ asset('javascript/jquery-timepicker/jquery.timepicker.min.js') }}"></script>
+<script src="{{ asset('javascript/balloon-js/jquery.balloon.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/clipboard.js/1.5.3/clipboard.min.js"></script>
+<script>
+    $(function () {
+      var clipboard = new Clipboard('.copy-btn');
+      clipboard.on('success', function(e) {
+          e.clearSelection();
+        $('.copy-btn').showBalloon({ 
+          contents: "コピーしました！",
+          css: {
+              // border: 'solid 4px #5baec0',
+              // padding: '10px',
+              fontSize: '120%',
+              fontWeight: 'bold',
+              // lineHeight: '3',
+              // backgroundColor: '#666',
+              // color: '#fff'
+          }
+        });
+      });
+      $('.copy-btn').mouseout(function(){
+        $('.copy-btn').hideBalloon({hideDuration: 1000});
+    })
+    });
+</script>
+{% endblock %}
+{% block body %}
+  <div id="main">
+    <header id="header-01">
+      <div class="icon">
+        <h2>予定くん</h2>
+      </div>
+    </header>
+    <div class="content">
+      <div class="content-inner">
+        <div class="title-02">
+          <h2>出力が完了しました！</h2>
+          <p>下記を編集、コピーして日程調整にお使いください</p>          
+        </div>
+        <div class="result-area">
+          <textarea id="copied-area" cols="30" rows="20">{% for freeTime in freeTimesText %}{{ freeTime }}&#13;{% endfor %}</textarea>   
+          <div class="button-wrapper">
+            <input class="copy-btn" type="submit" value="クリップボードにコピー" data-clipboard-target="#copied-area">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+    $(function () {
+
+    });
+</script>
+{% endblock %}

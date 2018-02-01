@@ -3,8 +3,8 @@
 <link rel="stylesheet" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1/themes/redmond/jquery-ui.css" >
 <link rel="stylesheet" href="{{ asset('javascript/jquery-timepicker/jquery.timepicker.css') }}">
 <link rel="stylesheet" href="{{ asset('css/main.css') }}">
-<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
-{% endblock %}
+{# <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+ #}{% endblock %}
 {% block javascripts %}
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
 <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1/jquery-ui.min.js"></script>
@@ -20,12 +20,12 @@
     </header>
     <div class="content">
       <div class="content-inner">
-        <div class="title">
+        <div class="title-01">
           <img src="{{ asset('img/calendar-icon.png') }}" alt="">
           <h2>あなたのカレンダーの空き時間を簡単30秒で出力！</h2>   
         </div>
         <div class="form">
-          <form action="{{ path('yotei-kun-get-freetime') }}" method="post" >  
+          <form action="{{ path('yotei-kun-form-post') }}" method="post" >  
             <div class="input-wrapper">開始日：<input type="text" class="datepicker" name="yoteikun_appbundle_schedule_setting[dayFrom]"></div>
             <div class="input-wrapper">終了日：<input type="text" class="datepicker" name="yoteikun_appbundle_schedule_setting[dayTo]"></div>
             <div class="input-wrapper">開始時間：<input type="time" class="timepicker" name="yoteikun_appbundle_schedule_setting[timeFrom]"></div>
@@ -34,7 +34,7 @@
             <div class="input-wrapper">前後あき時間：<input type="number" id="yoteikun_appbundle_schedule_setting_interval" name="yoteikun_appbundle_schedule_setting[interval]" min="0" max="180" step="15">分</div>
             {{ form_widget(form._token) }}
             <div class="button-wrapper">
-              <button type="button" class="btn-block">空き時間を出力する</button>
+              <input type="submit" value="空き時間を出力する">
             </div>
           </form>  
         </div>    
