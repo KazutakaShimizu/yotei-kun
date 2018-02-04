@@ -45,7 +45,7 @@ class DefaultController extends BaseController
 
 
     /**
-     * @Route("/form
+     * @Route("/result
      ", name="yotei-kun-form-post")
      * @Method("POST")
      */
@@ -69,14 +69,11 @@ class DefaultController extends BaseController
             if ($client->getAccessToken()) {
               $token_data = $client->verifyIdToken();
             }
-            if ($client->isAccessTokenExpired()) {
-                $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-                file_put_contents($credentialsPath, json_encode($client->getAccessToken()));
-            }
             $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
             $this->setAttribute("accessToken", $accessToken);
             return $this->render('default/result.html.twig', array(
                 "freeTimesText" => $freeTimesText,
+                "email" => $token_data["email"],
             ));
         }else{
             $em->persist($scheduleSettingEntity);
@@ -112,15 +109,11 @@ class DefaultController extends BaseController
         if ($client->getAccessToken()) {
           $token_data = $client->verifyIdToken();
         }
-
-        if ($client->isAccessTokenExpired()) {
-            $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
-            file_put_contents($credentialsPath, json_encode($client->getAccessToken()));
-        }
         $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
         $this->setAttribute("accessToken", $accessToken);
         return $this->render('default/result.html.twig', array(
             "freeTimesText" => $freeTimesText,
+            "email" => $token_data["email"],
         ));
     }
 

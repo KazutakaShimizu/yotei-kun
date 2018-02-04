@@ -39,14 +39,15 @@
   <div id="main">
     <header id="header-01">
       <div class="icon">
-        <h2>予定くん</h2>
+        <h2>ヒマミル！</h2>
       </div>
     </header>
     <div class="content">
       <div class="content-inner">
         <div class="title-02">
           <h2>出力が完了しました！</h2>
-          <p>下記を編集、コピーして日程調整にお使いください</p>          
+          <p>{{email}}のカレンダーを出力しました</p>
+          <p>下記を編集、コピーして日程調整にお使いください</p>
         </div>
         <div class="result-area">
           <textarea id="copied-area" cols="30" rows="20">{% for freeTime in freeTimesText %}{{ freeTime }}&#13;{% endfor %}</textarea>   
