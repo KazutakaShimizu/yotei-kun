@@ -52,7 +52,7 @@ class ScheduleSettingType extends AbstractType
                     "step" => 15,
                 ),            
             ))
-            ->add('interval', "integer", array(
+            ->add('intervals', "integer", array(
                 'label' => '前後何分あけるか',
                 'required'  => false,
                 "attr" => array(

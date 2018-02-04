@@ -31,7 +31,7 @@
             <div class="input-wrapper">開始時間：<input type="time" class="timepicker" name="yoteikun_appbundle_schedule_setting[timeFrom]"></div>
             <div class="input-wrapper">終了時間：<input type="time" class="timepicker" name="yoteikun_appbundle_schedule_setting[timeTo]"></div>
             <div class="input-wrapper">最低時間：<input type="number" id="yoteikun_appbundle_schedule_setting_minimumUnit" name="yoteikun_appbundle_schedule_setting[minimumUnit]" min="0" max="150" step="15">分</div>
-            <div class="input-wrapper">前後あき時間：<input type="number" id="yoteikun_appbundle_schedule_setting_interval" name="yoteikun_appbundle_schedule_setting[interval]" min="0" max="180" step="15">分</div>
+            <div class="input-wrapper">前後あき時間：<input type="number" id="yoteikun_appbundle_schedule_setting_intervals" name="yoteikun_appbundle_schedule_setting[intervals]" min="0" max="180" step="15">分</div>
             {{ form_widget(form._token) }}
             <div class="button-wrapper">
               <input type="submit" value="空き時間を出力する">

@@ -58,14 +58,14 @@ class ScheduleSetting
      *
      * @ORM\Column(name="minimum_unit", type="integer", nullable=false)
      */
-    private $minimumUnit;
+    private $minimumUnit = 60;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="interval", type="integer", nullable=false)
+     * @ORM\Column(name="intervals", type="integer", nullable=false)
      */
-    private $interval;
+    private $intervals = 30;
 
     /**
      * @var \DateTime
@@ -226,27 +226,27 @@ class ScheduleSetting
     }
 
     /**
-     * Set interval
+     * Set intervals
      *
-     * @param \DateTime $interval
+     * @param \DateTime $intervals
      *
      * @return UserPlan
      */
-    public function setInterval($interval)
+    public function setIntervals($intervals)
     {
-        $this->interval = $interval;
+        $this->intervals = $intervals;
 
         return $this;
     }
 
     /**
-     * Get interval
+     * Get intervals
      *
      * @return \DateTime
      */
-    public function getInterval()
+    public function getIntervals()
     {
-        return $this->interval;
+        return $this->intervals;
     }
 
     /**
