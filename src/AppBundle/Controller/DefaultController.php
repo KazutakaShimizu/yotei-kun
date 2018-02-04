@@ -1,7 +1,6 @@
 <?php
 
-// 予定が全く入ってない日の対応
-// 予定が全く入ってない日、もしくは入ってるが範囲に入ってない日の際に、どうやってintervalを反映させないようにするか
+// 自分の予定だけを取得するようにする
 
 
 namespace AppBundle\Controller;
@@ -60,23 +59,23 @@ class DefaultController extends BaseController
         $em = $this->getDoctrine()->getManager();
         $client = $this->createGoogleClient();
 
-        $userEntity = $em->getRepository("AppBundle:User")->findOneBy(array(
-            'token' => $token,
-        ));
+        // $userEntity = $em->getRepository("AppBundle:User")->findOneBy(array(
+        //     'token' => $token,
+        // ));
 
-        if ($userEntity) {
-            $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
-            return $this->render('default/result.html.twig', array(
-                "freeTimesText" => $freeTimesText,
-            ));
-        }else{
-            // userエンティティもここで作ってしまう
+        // if ($userEntity) {
+        //     $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
+        //     return $this->render('default/result.html.twig', array(
+        //         "freeTimesText" => $freeTimesText,
+        //     ));
+        // }else{
+        //     // userエンティティもここで作ってしまう
+        //     $em->persist($scheduleSettingEntity);
+        //     $em->flush();
             $this->setAttribute("post_data", $form->getData());
-            $em->persist($scheduleSettingEntity);
-            $em->flush();
             $authUrl = $client->createAuthUrl();
             return $this->redirect($authUrl);
-        }
+        // }
 
     }
 
@@ -101,12 +100,14 @@ class DefaultController extends BaseController
         $client = $this->createGoogleClient();
         $accessToken = $client->fetchAccessTokenWithAuthCode($authCode);
         $client->setAccessToken($accessToken);
+        if ($client->getAccessToken()) {
+          $token_data = $client->verifyIdToken();
+        }
+        
         if ($client->isAccessTokenExpired()) {
             $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
             file_put_contents($credentialsPath, json_encode($client->getAccessToken()));
         }
-        // accessTokenを保存
-        // sessionからpost内容を引っ張ってきてfreetimeを取得
         $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
         return $this->render('default/result.html.twig', array(
             "freeTimesText" => $freeTimesText,
@@ -142,6 +143,8 @@ class DefaultController extends BaseController
 
         $beforeBusyEndTime;
         $i = 0;
+        dump($results);
+        exit;
         $busyArray = $results->getCalendars()["s.kazutaka55555@gmail.com"]->getBusy();
         $isTodayFirstBusy = true;
         $minimumUnit = $scheduleSettingEntity->getMinimumUnit();
@@ -149,11 +152,15 @@ class DefaultController extends BaseController
         
         $dateInterval = new \DateInterval('P1D');
         $daterange = new \DatePeriod($scheduleSettingEntity->getDayFrom(), $dateInterval ,$scheduleSettingEntity->getDayTo());
+        // dump($scheduleSettingEntity->getTimeFrom());
+
         foreach ($daterange as $date) {
-            $this->freeTimes[$date->format("Y年m月d日")] = null;
+            $this->freeTimes[$date->format("Y年m月d日")] = ["{$scheduleSettingEntity->getTimeFrom()->format("H:i")}~{$scheduleSettingEntity->getTimeTo()->format("H:i")}"];
+            // $this->freeTimes[$date->format("Y年m月d日")] = ["終日"];
         }
 
         foreach ($busyArray as $busy) {
+
             // 予定の開始関連
             $startDateTime = new \DateTime($busy->getStart());
             $startYear = $startDateTime->format("Y");
@@ -165,6 +172,15 @@ class DefaultController extends BaseController
             $timeFrom = $scheduleSettingEntity->getTimeFrom()->setDate($startYear, $startMonth, $startDay);
             $timeTo = $scheduleSettingEntity->getTimeTo()->setDate($startYear, $startMonth, $startDay);
 
+            if ($startDateTime->format("Y年m月d日") == "2018年01月18日") {
+                dump("ビンゴ");
+            }
+            dump($this->freeTimes[$startDateTime->format("Y年m月d日")]);
+            dump(["{$scheduleSettingEntity->getTimeFrom()->format("H:i")}~{$scheduleSettingEntity->getTimeTo()->format("H:i")}"]);
+            if ($this->freeTimes[$startDateTime->format("Y年m月d日")] == ["{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}"]) {
+                $this->freeTimes[$startDateTime->format("Y年m月d日")] = null;
+
+            }
             if ($timeFrom < $startDateTime) {
                 if($isTodayFirstBusy){// その日最初の予定だった場合
                     dump(0);
@@ -174,18 +190,20 @@ class DefaultController extends BaseController
                     if ($startDateTime > $timeTo) {
                         dump(1);
                         $this->addFreeTime($startDateTime, $beforeBusyEndTime, $timeTo, $minimumUnit, $interval);
+                        dump($timeTo);
                     }else{
                         dump(2);
                         $this->addFreeTime($startDateTime, $beforeBusyEndTime, $startDateTime, $minimumUnit, $interval);
                     }
                 }
                 $beforeBusyEndTime = $endDateTime;
+
+
             }elseif($timeFrom > $endDateTime){
                 $beforeBusyEndTime = $timeFrom;
             }else{
                 $beforeBusyEndTime = $endDateTime;
             }
-
             if (array_key_exists($i+1, $busyArray)) {
                 $nextBusyStartDateTime = new \DateTime($busyArray[$i+1]->getStart());
                 if ($startDateTime->format("Ymd") !== $nextBusyStartDateTime->format("Ymd")) {//その日最後の予定だった場合
@@ -223,10 +241,12 @@ class DefaultController extends BaseController
         $freeTimesText = [];
         foreach ($this->freeTimes as $day => $times) {
             $str = "{$day}:";
-            foreach ((array)$times as $time) {
-                $str .= "{$time}, ";
+            if ($times) {
+                foreach ((array)$times as $time) {
+                    $str .= "{$time}, ";
+                }
+                $freeTimesText[] = rtrim($str, ", ");
             }
-            $freeTimesText[] = rtrim($str, ", ");
         }
         return $freeTimesText;
     }
@@ -376,18 +396,22 @@ class DefaultController extends BaseController
 
 
     private function addFreeTime($thisDay, $timeFrom, $timeTo, $minimumUnit, $interval, $type=0){
-        $freeTime = $timeFrom->diff($timeTo)->format("%h")*60 + $timeFrom->diff($timeTo)->format("%i");
+        $from = clone $timeFrom;
+        $to = clone $timeTo;
+        $freeTime = $from->diff($to)->format("%h")*60 + $from->diff($to)->format("%i");
         $minimumUnit += $interval*2;
         if ($freeTime >= $minimumUnit) {
             if ($type == 0 || $type == 2) {
-                $timeFrom->modify("{$interval} minutes");
+                $from->modify("{$interval} minutes");
             }
             if ($type == 0 || $type == 1) {
-                $timeTo->modify("-{$interval} minutes");
+                $to->modify("-{$interval} minutes");
             }
-            $this->freeTimes[$thisDay->format("Y年m月d日")][] = "{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}";
+            $this->freeTimes[$thisDay->format("Y年m月d日")][] = "{$from->format("H:i")}~{$to->format("H:i")}";
         }
     }
+
+
 
 
     // private function getClient(){
@@ -457,7 +481,7 @@ class DefaultController extends BaseController
         $client->setApprovalPrompt('force');
         // Load previously authorized credentials from a file.
         // DB上にあるcredentialを探す
-        ログインした時に帰ってくる値を使って、
+        // ログインした時に帰ってくる値を使って、
 
 
         $path = '~/.credentials/calendar-php-quickstart.json';
