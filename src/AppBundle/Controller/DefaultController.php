@@ -59,32 +59,30 @@ class DefaultController extends BaseController
             return $this->redirect($this->generateUrl('yotei-kun'));
         }
         $em = $this->getDoctrine()->getManager();
-        $client = $this->createGoogleClient();
+        $em->persist($scheduleSettingEntity);
+        $em->flush();
 
+
+        $client = $this->createGoogleClient();
         $accessToken = $this->getAttribute("accessToken");
-        if ($accessToken) {
+        if ($accessToken) {//アクセストークンがセッションにある
             $client = $this->createGoogleClient();
             $client->setAccessToken($accessToken);
-            // tokenはあっても、期限が切れている場合
-            if ($client->isAccessTokenExpired()) {
+            if ($client->isAccessTokenExpired()) {//トークンのセッションが切れてる
                 $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
             }
-            if ($client->getAccessToken()) {
-              $token_data = $client->verifyIdToken();
-            }
+            $token_data = $client->verifyIdToken();
             $freeTimesText = $this->getFreetime($client, $this->getAttribute("post_data"));
             $this->setAttribute("accessToken", $accessToken);
             return $this->render('default/result.html.twig', array(
                 "freeTimesText" => $freeTimesText,
                 "email" => $token_data["email"],
             ));
-        }else{
-            $em->persist($scheduleSettingEntity);
-            $em->flush();
-            $this->setAttribute("post_data", $form->getData());
+        }else{//アクセストークンがない
             $authUrl = $client->createAuthUrl();
             return $this->redirect($authUrl);
         }
+        $this->setAttribute("post_data", $form->getData());
     }
 
     private function createGoogleClient(){
@@ -95,7 +93,6 @@ class DefaultController extends BaseController
         $client->setAuthConfig($this->get('kernel')->getRootDir()."/client_secret.json");
         $client->setAccessType('offline');
         $client->setApprovalPrompt('force');
-
         return $client;
     }
 
@@ -158,11 +155,9 @@ class DefaultController extends BaseController
         
         $dateInterval = new \DateInterval('P1D');
         $daterange = new \DatePeriod($scheduleSettingEntity->getDayFrom(), $dateInterval ,$scheduleSettingEntity->getDayTo());
-        // dump($scheduleSettingEntity->getTimeFrom());
 
         foreach ($daterange as $date) {
             $this->freeTimes[$date->format("Y年m月d日")] = ["{$scheduleSettingEntity->getTimeFrom()->format("H:i")}~{$scheduleSettingEntity->getTimeTo()->format("H:i")}"];
-            // $this->freeTimes[$date->format("Y年m月d日")] = ["終日"];
         }
 
         foreach ($busyArray as $busy) {
@@ -177,11 +172,6 @@ class DefaultController extends BaseController
             $timeFrom = $scheduleSettingEntity->getTimeFrom()->setDate($startYear, $startMonth, $startDay);
             $timeTo = $scheduleSettingEntity->getTimeTo()->setDate($startYear, $startMonth, $startDay);
 
-            if ($startDateTime->format("Y年m月d日") == "2018年01月18日") {
-                // dump("ビンゴ");
-            }
-            // dump($this->freeTimes[$startDateTime->format("Y年m月d日")]);
-            // dump(["{$scheduleSettingEntity->getTimeFrom()->format("H:i")}~{$scheduleSettingEntity->getTimeTo()->format("H:i")}"]);
             if ($this->freeTimes[$startDateTime->format("Y年m月d日")] == ["{$timeFrom->format("H:i")}~{$timeTo->format("H:i")}"]) {
                 $this->freeTimes[$startDateTime->format("Y年m月d日")] = null;
 
@@ -228,7 +218,6 @@ class DefaultController extends BaseController
                 }
             }else{
                 if ($endDateTime < $timeTo) {
-                    // ここでもbeforebusyEndtimeを使う必要のあるパターン
                     if ($isTodayFirstBusy) {
                         // dump(5);
                         $this->addFreeTime($startDateTime, $beforeBusyEndTime, $timeTo, $minimumUnit, $intervals, 2);
